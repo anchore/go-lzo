@@ -79,12 +79,12 @@ jobs:
           # for creating the release (requires write access to packages and content)
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-#      - uses: 8398a7/action-slack@1750b5085f3ec60384090fb7c52965ef822e869e #v3.18.0
-#        continue-on-error: true
-#        with:
-#          status: ${{ job.status }}
-#          fields: repo,workflow,action,eventName
-#          text: "A new go-lzo release has been published: https://github.com/anchore/go-lzo/releases/tag/${{ github.event.inputs.version }}"
-#        env:
-#          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TOOLBOX_WEBHOOK_URL }}
-#        if: ${{ success() }}
+      - uses: 8398a7/action-slack@1750b5085f3ec60384090fb7c52965ef822e869e #v3.18.0
+        continue-on-error: true
+        with:
+          status: ${{ job.status }}
+          fields: repo,workflow,action,eventName
+          text: "A new go-lzo release has been published: https://github.com/anchore/go-lzo/releases/tag/${{ github.event.inputs.version }}"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TOOLBOX_WEBHOOK_URL }}
+        if: ${{ success() }}

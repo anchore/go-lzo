@@ -143,6 +143,15 @@ tasks:
     cmds:
       - "go test ./..."
 
+  lzo-tool:
+    desc: Build the lzo tool
+    generates:
+      - "testdata/bin/lzo-tool"
+    cmds:
+      # change this as you need it for debugging
+      # -I/opt/homebrew/include -L/opt/homebrew/lib
+      - "g++ -o testdata/bin/lzo-tool testdata/lzo-tool.cpp -llzo2"
+
   ## Test-fixture-related targets #################################
 
   fingerprints:

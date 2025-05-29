@@ -1,0 +1,21 @@
+version: 2
+
+updates:
+
+  - package-ecosystem: "gomod"
+    open-pull-requests-limit: 10
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "github-actions"
+    open-pull-requests-limit: 10
+    directory: "/.github/actions/bootstrap"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "github-actions"
+    open-pull-requests-limit: 10
+    directory: "/.github/workflows"
+    schedule:
+      interval: "daily"

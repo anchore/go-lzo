@@ -16,12 +16,16 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 #v5.0.0
+        with:
+          persist-credentials: false
 
       - name: Check if tag already exists
         # note: this will fail if the tag already exists
         run: |
-          [[ "${{ github.event.inputs.version }}" == v* ]] || (echo "version '${{ github.event.inputs.version }}' does not have a 'v' prefix" && exit 1)
-          git tag ${{ github.event.inputs.version }}
+          [[ "${GITHUB_EVENT_INPUTS_VERSION}" == v* ]] || (echo "version '${GITHUB_EVENT_INPUTS_VERSION}' does not have a 'v' prefix" && exit 1)
+          git tag ${GITHUB_EVENT_INPUTS_VERSION}
+        env:
+          GITHUB_EVENT_INPUTS_VERSION: ${{ github.event.inputs.version }}
 
       - name: Check static analysis results
         uses: fountainhead/action-wait-for-check@5a908a24814494009c4bb27c242ea38c93c593be # v1.2.0
@@ -44,9 +48,12 @@ jobs:
       - name: Quality gate
         if: steps.static-analysis.outputs.conclusion != 'success' || steps.unit.outputs.conclusion != 'success'
         run: |
-          echo "Static Analysis Status: ${{ steps.static-analysis.conclusion }}"
-          echo "Unit Test Status: ${{ steps.unit.outputs.conclusion }}"
+          echo "Static Analysis Status: ${STEPS_STATIC_ANALYSIS_CONCLUSION}"
+          echo "Unit Test Status: ${STEPS_UNIT_OUTPUTS_CONCLUSION}"
           false
+        env:
+          STEPS_STATIC_ANALYSIS_CONCLUSION: ${{ steps.static-analysis.conclusion }}
+          STEPS_UNIT_OUTPUTS_CONCLUSION: ${{ steps.unit.outputs.conclusion }}
 
   release:
     needs: [quality-gate]
@@ -60,6 +67,7 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 #v5.0.0
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Bootstrap environment
         uses: ./.github/actions/bootstrap
@@ -68,10 +76,11 @@ jobs:
         run: |
           git config --global user.name "anchoreci"
           git config --global user.email "anchoreci@users.noreply.github.com"
-          git tag -a ${{ github.event.inputs.version }} -m "Release ${{ github.event.inputs.version }}"
+          git tag -a ${GITHUB_EVENT_INPUTS_VERSION} -m "Release ${GITHUB_EVENT_INPUTS_VERSION}"
           git push origin --tags
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_EVENT_INPUTS_VERSION: ${{ github.event.inputs.version }}
 
       - name: Build & publish release artifacts
         run: make ci-release
@@ -79,12 +88,22 @@ jobs:
           # for creating the release (requires write access to packages and content)
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: 8398a7/action-slack@1750b5085f3ec60384090fb7c52965ef822e869e #v3.18.0
+      - name: Notify Slack of new release
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a #v2.1.1
         continue-on-error: true
         with:
-          status: ${{ job.status }}
-          fields: repo,workflow,action,eventName
-          text: "A new go-lzo release has been published: https://github.com/anchore/go-lzo/releases/tag/${{ github.event.inputs.version }}"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TOOLBOX_WEBHOOK_URL }}
+          webhook: ${{ secrets.SLACK_TOOLBOX_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "A new go-lzo release has been published: https://github.com/anchore/go-lzo/releases/tag/${{ github.event.inputs.version }}"
+            blocks:
+              - type: section
+                text:
+                  type: mrkdwn
+                  text: |
+                    *A new go-lzo release has been published* :rocket:
+                    • Release: <https://github.com/anchore/go-lzo/releases/tag/${{ github.event.inputs.version }}|${{ github.event.inputs.version }}>
+                    • Repo: `${{ github.repository }}`
+                    • Workflow: `${{ github.workflow }}`
+                    • Event: `${{ github.event_name }}`
         if: ${{ success() }}

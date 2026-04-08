@@ -237,7 +237,7 @@ func (d *decoder) handleM3(inst byte) error {
 	}
 	val := int(d.getLe16())
 	d.src.idx += 2
-	d.lbIdx = d.dst.idx - (int(val>>2) + 1)
+	d.lbIdx = d.dst.idx - (val>>2 + 1)
 	d.nextState = val & 0x3
 	return nil
 }
@@ -268,7 +268,7 @@ func (d *decoder) handleM4(inst byte) (finished bool, err error) {
 
 	val := int(d.getLe16())
 	d.src.idx += 2
-	d.lbIdx = d.dst.idx - (int(inst&0x8)<<11 + int(val>>2))
+	d.lbIdx = d.dst.idx - (int(inst&0x8)<<11 + val>>2)
 	d.nextState = val & 0x3
 
 	if d.lbIdx == d.dst.idx {

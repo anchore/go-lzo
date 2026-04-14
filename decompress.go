@@ -368,7 +368,7 @@ func (d *decoder) handleM1ShortCopy(inst byte) error {
 //go:inline
 func (d *decoder) copyLiterals(length int) {
 	// note: benchmarking shows that this is faster than using copy()
-	for i := 0; i < length; i++ {
+	for i := range length {
 		d.dst.data[d.dst.idx+i] = d.src.data[d.src.idx+i]
 	}
 	d.dst.idx += length

@@ -8,10 +8,12 @@ on:
   schedule:
     - cron: '38 11 * * 3'
 
+permissions: {}
+
 jobs:
   analyze:
     name: Analyze
-    uses: anchore/workflows/.github/workflows/codeql.yaml@share-codeql-workflow
+    uses: anchore/workflows/.github/workflows/codeql.yaml@e8cee3a5916cebb68cda68b54c180f43394c1910 # v0.5.0
     permissions:
       security-events: write
       packages: read

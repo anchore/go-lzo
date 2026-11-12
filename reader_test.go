@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"testing/iotest"
 )
 
 func Test_Decompression_Fixed(t *testing.T) {
@@ -280,4 +281,73 @@ func FuzzCompressDecompress(f *testing.F) {
 			t.Errorf("Decompressed data does not match original data")
 		}
 	})
+}
+
+func Test_Reader_PartialSourceReads(t *testing.T) {
+	// a raw LZO1X stream (no lzop framing) for the 13 bytes "Hello, World!": a
+	// single literal run followed by the end of stream marker
+	compressed := []byte{
+		30, // copy 13 literals (30 - 17)
+		'H', 'e', 'l', 'l', 'o', ',', ' ', 'W', 'o', 'r', 'l', 'd', '!',
+		0x11, 0x00, 0x00, // end of stream
+	}
+	expected := []byte("Hello, World!")
+
+	// the byte slice entrypoint handles this stream, so any Reader failure below is
+	// about how the source is consumed and not about the stream itself
+	dst := make([]byte, len(expected))
+	n, err := Decompress(compressed, dst)
+	if err != nil {
+		t.Fatalf("Decompress of the fixture failed: %v", err)
+	}
+	if !bytes.Equal(dst[:n], expected) {
+		t.Fatalf("Decompress returned %q, want %q", dst[:n], expected)
+	}
+
+	tests := []struct {
+		name string
+		src  io.Reader
+	}{
+		{
+			name: "whole stream in one read",
+			src:  bytes.NewReader(compressed),
+		},
+		{
+			name: "one byte per read",
+			src:  iotest.OneByteReader(bytes.NewReader(compressed)),
+		},
+		{
+			name: "five bytes per read",
+			src:  &chunkedReader{data: compressed, chunk: 5},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := io.ReadAll(NewReader(tt.src))
+			if err != nil {
+				t.Fatalf("decompression failed: %v", err)
+			}
+			if !bytes.Equal(got, expected) {
+				t.Errorf("got %q (%d bytes), want %q (%d bytes)", got, len(got), expected, len(expected))
+			}
+		})
+	}
+}
+
+// chunkedReader hands back at most chunk bytes per Read, which io.Reader allows
+type chunkedReader struct {
+	data  []byte
+	chunk int
+	pos   int
+}
+
+func (r *chunkedReader) Read(p []byte) (int, error) {
+	if r.pos >= len(r.data) {
+		return 0, io.EOF
+	}
+	end := min(r.pos+r.chunk, len(r.data))
+	n := copy(p, r.data[r.pos:end])
+	r.pos += n
+	return n, nil
 }

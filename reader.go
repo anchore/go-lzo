@@ -83,18 +83,15 @@ func (r *Reader) decompressNextBlock() error {
 
 	// try to fill source buffer
 	if len(r.srcBuf) < 3 { // need at least 3 bytes for valid LZO stream
-		tempBuf := make([]byte, r.blockSize)
-		n, err := r.src.Read(tempBuf)
-		if n > 0 {
-			r.srcBuf = append(r.srcBuf, tempBuf[:n]...)
+		// Decompress works on a whole stream at a time, and an io.Reader is free to
+		// return fewer bytes than asked for, so read the source to exhaustion rather
+		// than trusting a single Read to hand back everything
+		data, err := io.ReadAll(r.src)
+		if len(data) > 0 {
+			r.srcBuf = append(r.srcBuf, data...)
 		}
 		if err != nil {
-			if err == io.EOF && len(r.srcBuf) == 0 {
-				return io.EOF
-			}
-			if err != io.EOF {
-				return err
-			}
+			return err
 		}
 	}
 
